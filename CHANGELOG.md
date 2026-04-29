@@ -5,7 +5,12 @@
 ### Changed
 
 * Improved spacing and internal padding for control buttons, preset timer buttons, and the custom timer action.
+* Tightened the preset round format grid with dedicated button sizing and gutters.
 * Added repository code ownership so pull requests require approval from vi-code.
+
+### Added
+
+* Added an About tab with author information, a Venmo coffee link, and vi-code.github.io.
 
 ## 0.1
 
