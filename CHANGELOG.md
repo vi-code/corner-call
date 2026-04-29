@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+* Improved spacing and internal padding for control buttons, preset timer buttons, and the custom timer action.
+
 ## 0.1
 
 Initial native Android release.

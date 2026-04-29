@@ -288,7 +288,7 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
   private LinearLayout controlPanel() {
     LinearLayout controls = row();
-    controls.setPadding(0, dp(14), 0, 0);
+    controls.setPadding(0, dp(18), 0, 0);
     startButton = button("Start", true);
     Button skip = button("Skip", false);
     Button reset = button("Reset", false);
@@ -354,13 +354,14 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
           }
         });
     LinearLayout.LayoutParams applyParams = new LinearLayout.LayoutParams(-1, dp(52));
-    applyParams.setMargins(0, dp(12), 0, 0);
+    applyParams.setMargins(dp(6), dp(16), dp(6), 0);
     panel.addView(apply, applyParams);
     return panel;
   }
 
   private LinearLayout presetRow(int start, int end) {
     LinearLayout presetRow = row();
+    presetRow.setPadding(0, dp(8), 0, 0);
     for (int i = start; i < end; i += 1) {
       final Preset preset = presets.get(i);
       Button presetButton = button(preset.label, false);
@@ -831,6 +832,11 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     button.setAllCaps(false);
     button.setTextColor(primary ? DARK : TEXT);
     button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+    button.setGravity(Gravity.CENTER);
+    button.setMinWidth(0);
+    button.setMinimumWidth(0);
+    button.setIncludeFontPadding(false);
+    button.setPadding(dp(10), 0, dp(10), 0);
     button.setBackground(rounded(primary ? GOLD : PANEL_STRONG, dp(16), primary ? GOLD : LINE, 1));
     button.setMinHeight(dp(52));
     return button;
@@ -883,7 +889,7 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
   private LinearLayout.LayoutParams weightedButton() {
     LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(54), 1);
-    params.setMargins(dp(4), 0, dp(4), 0);
+    params.setMargins(dp(6), 0, dp(6), 0);
     return params;
   }
 
