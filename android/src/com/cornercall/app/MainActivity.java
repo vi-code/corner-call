@@ -1,12 +1,14 @@
 package com.cornercall.app;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -63,6 +65,7 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   private boolean running;
   private boolean complete;
   private boolean workPhase = true;
+  private boolean showingAbout;
   private int currentRound = 1;
   private int phaseRemaining;
   private int phaseDuration;
@@ -95,6 +98,9 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   private CheckBox defenseToggle;
   private CheckBox voiceToggle;
   private Button startButton;
+  private Button trainTab;
+  private Button aboutTab;
+  private LinearLayout contentContainer;
   private final List<String> recentCombos = new ArrayList<>();
 
   private static class Move {
@@ -203,12 +209,10 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     scroll.addView(root, new ScrollView.LayoutParams(-1, -2));
 
     root.addView(header());
-    root.addView(workoutCard());
-    root.addView(controlPanel());
-    root.addView(formatPanel());
-    root.addView(enginePanel());
-    root.addView(notesPanel());
-    root.addView(punchPanel());
+    root.addView(tabBar());
+    contentContainer = vertical();
+    root.addView(contentContainer);
+    showTrainTab();
     return scroll;
   }
 
@@ -236,6 +240,49 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     TextView version = chip("v0.1", GOLD);
     header.addView(version);
     return header;
+  }
+
+  private LinearLayout tabBar() {
+    LinearLayout tabs = row();
+    tabs.setPadding(0, dp(16), 0, dp(2));
+    trainTab = tabButton("Train");
+    aboutTab = tabButton("About");
+    trainTab.setOnClickListener(
+        new View.OnClickListener() {
+          @Override
+          public void onClick(View view) {
+            showTrainTab();
+          }
+        });
+    aboutTab.setOnClickListener(
+        new View.OnClickListener() {
+          @Override
+          public void onClick(View view) {
+            showAboutTab();
+          }
+        });
+    tabs.addView(trainTab, weightedButton());
+    tabs.addView(aboutTab, weightedButton());
+    return tabs;
+  }
+
+  private void showTrainTab() {
+    showingAbout = false;
+    contentContainer.removeAllViews();
+    contentContainer.addView(workoutCard());
+    contentContainer.addView(controlPanel());
+    contentContainer.addView(formatPanel());
+    contentContainer.addView(enginePanel());
+    contentContainer.addView(notesPanel());
+    contentContainer.addView(punchPanel());
+    render();
+  }
+
+  private void showAboutTab() {
+    showingAbout = true;
+    contentContainer.removeAllViews();
+    contentContainer.addView(aboutPanel());
+    render();
   }
 
   private LinearLayout workoutCard() {
@@ -361,7 +408,7 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
   private LinearLayout presetRow(int start, int end) {
     LinearLayout presetRow = row();
-    presetRow.setPadding(0, dp(8), 0, 0);
+    presetRow.setPadding(0, dp(10), 0, 0);
     for (int i = start; i < end; i += 1) {
       final Preset preset = presets.get(i);
       Button presetButton = button(preset.label, false);
@@ -379,9 +426,60 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
               render();
             }
           });
-      presetRow.addView(presetButton, weightedButton());
+      presetRow.addView(presetButton, presetButtonParams());
     }
     return presetRow;
+  }
+
+  private LinearLayout aboutPanel() {
+    LinearLayout panel = panel(true);
+    panel.setPadding(dp(20), dp(22), dp(20), dp(22));
+    panel.addView(sectionHeading("About", "Built by vi-code"));
+
+    TextView copy =
+        text(
+            "Corner Call is a native Android boxing timer built for real bag work. It keeps the screen simple, calls combinations out loud, and stays out of the way while you train.",
+            16,
+            MUTED,
+            Typeface.NORMAL);
+    copy.setLineSpacing(dp(5), 1.0f);
+    copy.setPadding(0, dp(8), 0, dp(16));
+    panel.addView(copy);
+
+    TextView author =
+        text(
+            "Made by Vihar Patel. If the app helps your rounds, you can buy me a coffee or check out more of my work.",
+            16,
+            TEXT,
+            Typeface.NORMAL);
+    author.setLineSpacing(dp(5), 1.0f);
+    panel.addView(author);
+
+    Button venmo = button("Buy me a coffee on Venmo", true);
+    LinearLayout.LayoutParams venmoParams = new LinearLayout.LayoutParams(-1, dp(56));
+    venmoParams.setMargins(0, dp(18), 0, 0);
+    panel.addView(venmo, venmoParams);
+    venmo.setOnClickListener(
+        new View.OnClickListener() {
+          @Override
+          public void onClick(View view) {
+            openLink("https://venmo.com/u/vikoopat");
+          }
+        });
+
+    Button website = button("vi-code.github.io", false);
+    LinearLayout.LayoutParams siteParams = new LinearLayout.LayoutParams(-1, dp(56));
+    siteParams.setMargins(0, dp(10), 0, 0);
+    panel.addView(website, siteParams);
+    website.setOnClickListener(
+        new View.OnClickListener() {
+          @Override
+          public void onClick(View view) {
+            openLink("https://vi-code.github.io");
+          }
+        });
+
+    return panel;
   }
 
   private LinearLayout enginePanel() {
@@ -710,6 +808,13 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   }
 
   private void render() {
+    if (trainTab != null && aboutTab != null) {
+      setTabSelected(trainTab, !showingAbout);
+      setTabSelected(aboutTab, showingAbout);
+    }
+    if (showingAbout) {
+      return;
+    }
     int phaseColor = complete ? GOOD : running ? (workPhase ? ACCENT : REST_BLUE) : GOLD;
     phaseLabel.setText(complete ? "Complete" : running ? (workPhase ? "Work" : "Rest") : "Ready");
     phaseLabel.setTextColor(phaseColor);
@@ -842,6 +947,20 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     return button;
   }
 
+  private Button tabButton(String label) {
+    Button button = new Button(this);
+    button.setText(label);
+    button.setAllCaps(false);
+    button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+    button.setGravity(Gravity.CENTER);
+    button.setMinWidth(0);
+    button.setMinimumWidth(0);
+    button.setIncludeFontPadding(false);
+    button.setPadding(dp(10), 0, dp(10), 0);
+    button.setMinHeight(dp(48));
+    return button;
+  }
+
   private CheckBox checkbox(String label, boolean checked) {
     CheckBox box = new CheckBox(this);
     box.setText(label);
@@ -893,6 +1012,12 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     return params;
   }
 
+  private LinearLayout.LayoutParams presetButtonParams() {
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(58), 1);
+    params.setMargins(dp(8), 0, dp(8), 0);
+    return params;
+  }
+
   private GradientDrawable rounded(int color, int radius, int strokeColor, int strokeWidth) {
     GradientDrawable drawable = new GradientDrawable();
     drawable.setColor(color);
@@ -905,6 +1030,15 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
   private void updateSliderLabel(TextView label, int value, boolean pace) {
     label.setText(pace ? value + "s" : String.valueOf(value));
+  }
+
+  private void setTabSelected(Button button, boolean selected) {
+    button.setTextColor(selected ? DARK : TEXT);
+    button.setBackground(rounded(selected ? GOLD : PANEL_STRONG, dp(16), selected ? GOLD : LINE, 1));
+  }
+
+  private void openLink(String url) {
+    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
   }
 
   private void setInputText(EditText input, String value) {
