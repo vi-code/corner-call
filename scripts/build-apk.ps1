@@ -43,7 +43,7 @@ $ClassesDir = Join-Path $BuildDir "classes"
 $DexDir = Join-Path $BuildDir "dex"
 $UnsignedApk = Join-Path $BuildDir "corner-call-unsigned.apk"
 $AlignedApk = Join-Path $BuildDir "corner-call-aligned.apk"
-$FinalApk = Join-Path $Root "dist\cornercall.apk"
+$FinalApk = Join-Path $Root "dist\cornercall0.1.apk"
 $Keystore = Join-Path $BuildDir "corner-call-debug.keystore"
 
 New-Item -ItemType Directory -Force $BuildDir | Out-Null

@@ -42,7 +42,7 @@ npm run build:apk
 The debug APK lands here:
 
 ```text
-dist/cornercall.apk
+dist/cornercall0.1.apk
 ```
 
 ## Notes
