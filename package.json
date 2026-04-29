@@ -1,0 +1,18 @@
+{
+  "name": "corner-call",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A dark, app-side boxing combo timer for heavy bag training.",
+  "scripts": {
+    "start": "python -m http.server 5173 --bind 127.0.0.1",
+    "build:apk": "powershell -ExecutionPolicy Bypass -File scripts/build-apk.ps1"
+  },
+  "keywords": [
+    "boxing",
+    "fitness",
+    "timer",
+    "combos"
+  ],
+  "author": "",
+  "license": "UNLICENSED"
+}
