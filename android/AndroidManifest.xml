@@ -8,6 +8,8 @@
 
   <application
     android:allowBackup="false"
+    android:icon="@drawable/ic_launcher"
+    android:roundIcon="@drawable/ic_launcher"
     android:label="Corner Call"
     android:supportsRtl="true"
     android:theme="@android:style/Theme.Material.NoActionBar">

@@ -37,6 +37,8 @@ function Invoke-Checked {
 }
 
 $BuildDir = Join-Path $Root "dist\android"
+$ResDir = Join-Path $Root "android\res"
+$CompiledRes = Join-Path $BuildDir "compiled-res.zip"
 $GenDir = Join-Path $BuildDir "gen"
 $ClassesDir = Join-Path $BuildDir "classes"
 $DexDir = Join-Path $BuildDir "dex"
@@ -58,7 +60,7 @@ if ($PreservedKeystore -and (Test-Path $PreservedKeystore)) {
   Copy-Item $PreservedKeystore $Keystore -Force
 }
 
-Invoke-Checked -FilePath $Aapt2 -Arguments @(
+$LinkArgs = @(
   "link",
   "-o", $UnsignedApk,
   "-I", $PlatformJar,
@@ -67,6 +69,17 @@ Invoke-Checked -FilePath $Aapt2 -Arguments @(
   "--min-sdk-version", "23",
   "--target-sdk-version", "34"
 )
+
+if (Test-Path $ResDir) {
+  Invoke-Checked -FilePath $Aapt2 -Arguments @(
+    "compile",
+    "--dir", $ResDir,
+    "-o", $CompiledRes
+  )
+  $LinkArgs += $CompiledRes
+}
+
+Invoke-Checked -FilePath $Aapt2 -Arguments $LinkArgs
 
 $SourceFiles = @(
   (Join-Path $Root "android\src\com\cornercall\app\MainActivity.java")

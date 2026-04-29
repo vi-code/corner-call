@@ -2,7 +2,9 @@ package com.cornercall.app;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Bundle;
@@ -15,7 +17,9 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -27,14 +31,18 @@ import java.util.Random;
 
 public class MainActivity extends Activity implements TextToSpeech.OnInitListener {
   private static final String PREFS = "corner_call_settings";
-  private static final int DARK = 0xff08090d;
-  private static final int PANEL = 0xff11151c;
-  private static final int PANEL_SOFT = 0xff171d26;
-  private static final int TEXT = 0xfff6f7fb;
+  private static final int DARK = 0xff07080c;
+  private static final int SURFACE = 0xff0d1118;
+  private static final int PANEL = 0xff121821;
+  private static final int PANEL_STRONG = 0xff18212c;
+  private static final int TEXT = 0xfff7f8fb;
   private static final int MUTED = 0xff9aa3b2;
+  private static final int DIM = 0xff697485;
   private static final int ACCENT = 0xfff14d42;
   private static final int GOLD = 0xfff8b84e;
-  private static final int LINE = 0xff28303b;
+  private static final int LINE = 0xff293241;
+  private static final int REST_BLUE = 0xff5fb4ff;
+  private static final int GOOD = 0xff36d98a;
 
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final Random random = new Random();
@@ -79,13 +87,14 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   private TextView recentLabel;
   private TextView paceValue;
   private TextView lengthValue;
+  private TextView sessionMetaLabel;
+  private ProgressBar phaseProgress;
   private EditText roundsInput;
   private EditText minutesInput;
   private EditText restInput;
   private CheckBox defenseToggle;
   private CheckBox voiceToggle;
   private Button startButton;
-
   private final List<String> recentCombos = new ArrayList<>();
 
   private static class Move {
@@ -189,54 +198,103 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     scroll.setFillViewport(true);
     scroll.setBackgroundColor(DARK);
 
-    LinearLayout root = new LinearLayout(this);
-    root.setOrientation(LinearLayout.VERTICAL);
-    root.setPadding(dp(18), dp(24), dp(18), dp(28));
+    LinearLayout root = vertical();
+    root.setPadding(dp(18), dp(22), dp(18), dp(30));
     scroll.addView(root, new ScrollView.LayoutParams(-1, -2));
 
+    root.addView(header());
+    root.addView(workoutCard());
+    root.addView(controlPanel());
+    root.addView(formatPanel());
+    root.addView(enginePanel());
+    root.addView(notesPanel());
+    root.addView(punchPanel());
+    return scroll;
+  }
+
+  private View header() {
+    LinearLayout header = row();
+    header.setPadding(0, 0, 0, dp(4));
+
+    ImageView icon = new ImageView(this);
+    icon.setImageResource(R.drawable.ic_launcher);
+    icon.setBackground(rounded(PANEL, dp(18), LINE, 1));
+    icon.setPadding(dp(7), dp(7), dp(7), dp(7));
+    LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(64), dp(64));
+    iconParams.setMargins(0, 0, dp(14), 0);
+    header.addView(icon, iconParams);
+
+    LinearLayout copy = vertical();
     TextView kicker = text("HEAVY BAG ROUNDS", 12, GOLD, Typeface.BOLD);
-    root.addView(kicker);
+    kicker.setLetterSpacing(0.08f);
+    copy.addView(kicker);
+    copy.addView(text("Corner Call", 36, TEXT, Typeface.BOLD));
+    sessionMetaLabel = text("", 14, MUTED, Typeface.NORMAL);
+    copy.addView(sessionMetaLabel);
+    header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
-    TextView title = text("Corner Call", 44, TEXT, Typeface.BOLD);
-    root.addView(title);
+    TextView version = chip("v0.1", GOLD);
+    header.addView(version);
+    return header;
+  }
 
-    LinearLayout topPanel = panel();
-    topPanel.setGravity(Gravity.CENTER);
-    topPanel.setPadding(dp(20), dp(22), dp(20), dp(22));
-    root.addView(topPanel);
+  private LinearLayout workoutCard() {
+    LinearLayout card = panel(true);
+    card.setGravity(Gravity.CENTER);
+    card.setPadding(dp(20), dp(22), dp(20), dp(24));
 
-    phaseLabel = text("Ready", 14, GOLD, Typeface.BOLD);
-    phaseLabel.setGravity(Gravity.CENTER);
-    topPanel.addView(phaseLabel);
+    LinearLayout chips = row();
+    chips.setGravity(Gravity.CENTER);
+    phaseLabel = chip("Ready", GOLD);
+    roundLabel = chip("Round 1 / 5", MUTED);
+    chips.addView(phaseLabel);
+    chips.addView(roundLabel);
+    card.addView(chips);
 
-    roundLabel = text("Round 1 / 5", 18, MUTED, Typeface.BOLD);
-    roundLabel.setGravity(Gravity.CENTER);
-    topPanel.addView(roundLabel);
-
-    timeLabel = text("03:00", 72, TEXT, Typeface.BOLD);
+    timeLabel = text("03:00", 76, TEXT, Typeface.BOLD);
     timeLabel.setGravity(Gravity.CENTER);
     timeLabel.setIncludeFontPadding(false);
-    topPanel.addView(timeLabel);
+    card.addView(timeLabel, matchWrap());
+
+    phaseProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+    phaseProgress.setMax(1000);
+    phaseProgress.setProgressTintList(ColorStateList.valueOf(ACCENT));
+    phaseProgress.setProgressBackgroundTintList(ColorStateList.valueOf(PANEL_STRONG));
+    LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(8));
+    progressParams.setMargins(dp(8), dp(12), dp(8), dp(12));
+    card.addView(phaseProgress, progressParams);
 
     hintLabel = text("Pick a format and tap Start", 15, MUTED, Typeface.NORMAL);
     hintLabel.setGravity(Gravity.CENTER);
-    topPanel.addView(hintLabel);
+    card.addView(hintLabel);
 
-    comboLabel = text("1 - 2 - 1 - 2", 42, TEXT, Typeface.BOLD);
+    TextView next = text("NEXT CALL", 12, DIM, Typeface.BOLD);
+    next.setLetterSpacing(0.08f);
+    next.setGravity(Gravity.CENTER);
+    next.setPadding(0, dp(22), 0, dp(2));
+    card.addView(next, matchWrap());
+
+    comboLabel = text("1 - 2 - 1 - 2", 44, TEXT, Typeface.BOLD);
     comboLabel.setGravity(Gravity.CENTER);
-    comboLabel.setPadding(0, dp(18), 0, 0);
-    topPanel.addView(comboLabel);
+    comboLabel.setIncludeFontPadding(false);
+    card.addView(comboLabel, matchWrap());
 
     comboNamesLabel = text("jab, cross, jab, cross", 17, GOLD, Typeface.NORMAL);
     comboNamesLabel.setGravity(Gravity.CENTER);
-    topPanel.addView(comboNamesLabel);
+    comboNamesLabel.setPadding(0, dp(8), 0, 0);
+    card.addView(comboNamesLabel, matchWrap());
+    return card;
+  }
 
-    LinearLayout controlRow = row();
-    root.addView(controlRow);
+  private LinearLayout controlPanel() {
+    LinearLayout controls = row();
+    controls.setPadding(0, dp(14), 0, 0);
     startButton = button("Start", true);
-    controlRow.addView(startButton, weightParams());
-    controlRow.addView(button("Skip", false), weightParams());
-    controlRow.addView(button("Reset", false), weightParams());
+    Button skip = button("Skip", false);
+    Button reset = button("Reset", false);
+    controls.addView(startButton, weightedButton());
+    controls.addView(skip, weightedButton());
+    controls.addView(reset, weightedButton());
 
     startButton.setOnClickListener(
         new View.OnClickListener() {
@@ -245,42 +303,66 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
             toggleWorkout();
           }
         });
-    controlRow
-        .getChildAt(1)
-        .setOnClickListener(
-            new View.OnClickListener() {
-              @Override
-              public void onClick(View view) {
-                showCombo(running);
-                nextCallIn = paceSeconds;
-                render();
-              }
-            });
-    controlRow
-        .getChildAt(2)
-        .setOnClickListener(
-            new View.OnClickListener() {
-              @Override
-              public void onClick(View view) {
-                resetWorkout();
-              }
-            });
-
-    root.addView(formatPanel());
-    root.addView(enginePanel());
-    root.addView(notesPanel());
-    root.addView(punchPanel());
-
-    return scroll;
+    skip.setOnClickListener(
+        new View.OnClickListener() {
+          @Override
+          public void onClick(View view) {
+            showCombo(running);
+            nextCallIn = paceSeconds;
+            render();
+          }
+        });
+    reset.setOnClickListener(
+        new View.OnClickListener() {
+          @Override
+          public void onClick(View view) {
+            resetWorkout();
+          }
+        });
+    return controls;
   }
 
   private LinearLayout formatPanel() {
-    LinearLayout panel = panel();
-    panel.addView(text("Round Format", 18, TEXT, Typeface.BOLD));
+    LinearLayout panel = panel(false);
+    panel.addView(sectionHeading("Round Format", "Common fight clocks"));
+    panel.addView(presetRow(0, 2));
+    panel.addView(presetRow(2, 4));
 
+    LinearLayout customRow = row();
+    customRow.setPadding(0, dp(12), 0, 0);
+    roundsInput = numberInput(String.valueOf(rounds));
+    minutesInput = numberInput(String.valueOf(roundSeconds / 60));
+    restInput = numberInput(String.valueOf(restSeconds));
+    customRow.addView(labeledInput("Rounds", roundsInput), weightParams());
+    customRow.addView(labeledInput("Minutes", minutesInput), weightParams());
+    customRow.addView(labeledInput("Rest", restInput), weightParams());
+    panel.addView(customRow);
+
+    Button apply = button("Apply custom timer", false);
+    apply.setOnClickListener(
+        new View.OnClickListener() {
+          @Override
+          public void onClick(View view) {
+            rounds = clamp(readInt(roundsInput, rounds), 1, 15);
+            roundSeconds = clamp(readInt(minutesInput, roundSeconds / 60), 1, 12) * 60;
+            restSeconds = clamp(readInt(restInput, restSeconds), 15, 180);
+            saveSettings();
+            if (!running) {
+              resetWorkout();
+            }
+            render();
+          }
+        });
+    LinearLayout.LayoutParams applyParams = new LinearLayout.LayoutParams(-1, dp(52));
+    applyParams.setMargins(0, dp(12), 0, 0);
+    panel.addView(apply, applyParams);
+    return panel;
+  }
+
+  private LinearLayout presetRow(int start, int end) {
     LinearLayout presetRow = row();
-    panel.addView(presetRow);
-    for (final Preset preset : presets) {
+    for (int i = start; i < end; i += 1) {
+      final Preset preset = presets.get(i);
       Button presetButton = button(preset.label, false);
       presetButton.setOnClickListener(
           new View.OnClickListener() {
@@ -296,40 +378,14 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
               render();
             }
           });
-      presetRow.addView(presetButton, weightParams());
+      presetRow.addView(presetButton, weightedButton());
     }
-
-    LinearLayout customRow = row();
-    panel.addView(customRow);
-    roundsInput = numberInput(String.valueOf(rounds));
-    minutesInput = numberInput(String.valueOf(roundSeconds / 60));
-    restInput = numberInput(String.valueOf(restSeconds));
-    customRow.addView(labeledInput("Rounds", roundsInput), weightParams());
-    customRow.addView(labeledInput("Minutes", minutesInput), weightParams());
-    customRow.addView(labeledInput("Rest sec", restInput), weightParams());
-
-    Button apply = button("Apply", false);
-    apply.setOnClickListener(
-        new View.OnClickListener() {
-          @Override
-          public void onClick(View view) {
-            rounds = clamp(readInt(roundsInput, rounds), 1, 15);
-            roundSeconds = clamp(readInt(minutesInput, roundSeconds / 60), 1, 12) * 60;
-            restSeconds = clamp(readInt(restInput, restSeconds), 15, 180);
-            saveSettings();
-            if (!running) {
-              resetWorkout();
-            }
-            render();
-          }
-        });
-    panel.addView(apply);
-    return panel;
+    return presetRow;
   }
 
   private LinearLayout enginePanel() {
-    LinearLayout panel = panel();
-    panel.addView(text("Combo Engine", 18, TEXT, Typeface.BOLD));
+    LinearLayout panel = panel(false);
+    panel.addView(sectionHeading("Combo Engine", "Control the coach in your headphones"));
 
     paceValue = text("", 15, GOLD, Typeface.BOLD);
     panel.addView(sliderRow("Call pace", 2, 9, paceSeconds, paceValue, true));
@@ -337,7 +393,14 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     lengthValue = text("", 15, GOLD, Typeface.BOLD);
     panel.addView(sliderRow("Combo length", 2, 6, comboLength, lengthValue, false));
 
-    defenseToggle = checkbox("Defensive moves", includeDefense);
+    LinearLayout toggles = row();
+    toggles.setPadding(0, dp(8), 0, 0);
+    defenseToggle = checkbox("Defense", includeDefense);
+    voiceToggle = checkbox("Voice", voiceEnabled);
+    toggles.addView(defenseToggle, weightParams());
+    toggles.addView(voiceToggle, weightParams());
+    panel.addView(toggles);
+
     defenseToggle.setOnClickListener(
         new View.OnClickListener() {
           @Override
@@ -348,9 +411,6 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
             render();
           }
         });
-    panel.addView(defenseToggle);
-
-    voiceToggle = checkbox("Voice calls", voiceEnabled);
     voiceToggle.setOnClickListener(
         new View.OnClickListener() {
           @Override
@@ -359,39 +419,46 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
             saveSettings();
           }
         });
-    panel.addView(voiceToggle);
     return panel;
   }
 
   private LinearLayout notesPanel() {
-    LinearLayout panel = panel();
-    LinearLayout heading = row();
-    heading.addView(text("Coach Notes", 18, TEXT, Typeface.BOLD), weightParams());
-    callCountLabel = text("0 calls", 14, MUTED, Typeface.NORMAL);
+    LinearLayout panel = panel(false);
+    LinearLayout heading = sectionHeading("Coach Notes", "");
+    callCountLabel = chip("0 calls", MUTED);
     heading.addView(callCountLabel);
     panel.addView(heading);
+
     recentLabel = text("Start a round to build the call log", 16, MUTED, Typeface.NORMAL);
-    recentLabel.setLineSpacing(dp(3), 1.0f);
+    recentLabel.setLineSpacing(dp(5), 1.0f);
+    recentLabel.setPadding(0, dp(10), 0, 0);
     panel.addView(recentLabel);
     return panel;
   }
 
   private LinearLayout punchPanel() {
-    LinearLayout panel = panel();
-    panel.addView(text("Punch Key", 18, TEXT, Typeface.BOLD));
+    LinearLayout panel = panel(false);
+    panel.addView(sectionHeading("Punch Key", "Orthodox numbers"));
     for (Move punch : punches) {
-      TextView item = text(punch.code + "   " + punch.name, 16, MUTED, Typeface.BOLD);
-      item.setPadding(0, dp(5), 0, dp(5));
-      panel.addView(item);
+      LinearLayout row = row();
+      row.setPadding(0, dp(7), 0, dp(7));
+      TextView number = text(punch.code, 16, DARK, Typeface.BOLD);
+      number.setGravity(Gravity.CENTER);
+      number.setBackground(rounded(GOLD, dp(14), 0, 0));
+      row.addView(number, new LinearLayout.LayoutParams(dp(34), dp(34)));
+      TextView name = text(punch.name, 16, MUTED, Typeface.NORMAL);
+      LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1);
+      nameParams.setMargins(dp(12), 0, 0, 0);
+      row.addView(name, nameParams);
+      panel.addView(row);
     }
     return panel;
   }
 
   private View sliderRow(
       String label, int min, int max, int value, final TextView valueLabel, final boolean pace) {
-    LinearLayout wrap = new LinearLayout(this);
-    wrap.setOrientation(LinearLayout.VERTICAL);
-    wrap.setPadding(0, dp(8), 0, dp(8));
+    LinearLayout wrap = vertical();
+    wrap.setPadding(0, dp(12), 0, dp(4));
     LinearLayout labelRow = row();
     labelRow.addView(text(label, 14, MUTED, Typeface.NORMAL), weightParams());
     labelRow.addView(valueLabel);
@@ -400,8 +467,9 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     SeekBar seek = new SeekBar(this);
     seek.setMax(max - min);
     seek.setProgress(value - min);
-    seek.getProgressDrawable().setTint(ACCENT);
-    seek.getThumb().setTint(ACCENT);
+    seek.setProgressTintList(ColorStateList.valueOf(ACCENT));
+    seek.setProgressBackgroundTintList(ColorStateList.valueOf(PANEL_STRONG));
+    seek.setThumbTintList(ColorStateList.valueOf(GOLD));
     wrap.addView(seek);
     updateSliderLabel(valueLabel, value, pace);
 
@@ -641,7 +709,10 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   }
 
   private void render() {
+    int phaseColor = complete ? GOOD : running ? (workPhase ? ACCENT : REST_BLUE) : GOLD;
     phaseLabel.setText(complete ? "Complete" : running ? (workPhase ? "Work" : "Rest") : "Ready");
+    phaseLabel.setTextColor(phaseColor);
+    phaseLabel.setBackground(rounded(0xff151b24, dp(18), phaseColor, 1));
     roundLabel.setText("Round " + currentRound + " / " + rounds);
     timeLabel.setText(formatTime(phaseRemaining));
     hintLabel.setText(
@@ -650,11 +721,16 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
             : running ? (workPhase ? "Hands up, chin down" : "Breathe") : "Pick a format and tap Start");
     startButton.setText(running ? "Pause" : complete ? "Start again" : "Start");
     callCountLabel.setText(comboCount + (comboCount == 1 ? " call" : " calls"));
+    sessionMetaLabel.setText(rounds + " rounds  " + formatDuration(roundSeconds) + " work  " + restSeconds + "s rest");
     defenseToggle.setChecked(includeDefense);
     voiceToggle.setChecked(voiceEnabled);
-    roundsInput.setText(String.valueOf(rounds));
-    minutesInput.setText(String.valueOf(roundSeconds / 60));
-    restInput.setText(String.valueOf(restSeconds));
+    setInputText(roundsInput, String.valueOf(rounds));
+    setInputText(minutesInput, String.valueOf(roundSeconds / 60));
+    setInputText(restInput, String.valueOf(restSeconds));
+
+    phaseProgress.setProgressTintList(ColorStateList.valueOf(phaseColor));
+    int progress = phaseDuration <= 0 ? 0 : (int) (((phaseDuration - phaseRemaining) / (float) phaseDuration) * 1000);
+    phaseProgress.setProgress(clamp(progress, 0, 1000));
 
     if (recentCombos.isEmpty()) {
       recentLabel.setText("Start a round to build the call log");
@@ -694,32 +770,59 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         .apply();
   }
 
-  private LinearLayout panel() {
-    LinearLayout panel = new LinearLayout(this);
-    panel.setOrientation(LinearLayout.VERTICAL);
+  private LinearLayout sectionHeading(String title, String subtitle) {
+    LinearLayout heading = row();
+    heading.setPadding(0, 0, 0, dp(6));
+    LinearLayout copy = vertical();
+    copy.addView(text(title, 18, TEXT, Typeface.BOLD));
+    if (!subtitle.isEmpty()) {
+      copy.addView(text(subtitle, 13, DIM, Typeface.NORMAL));
+    }
+    heading.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+    return heading;
+  }
+
+  private LinearLayout panel(boolean hero) {
+    LinearLayout panel = vertical();
     panel.setPadding(dp(16), dp(16), dp(16), dp(16));
-    panel.setBackgroundColor(PANEL);
+    panel.setBackground(rounded(hero ? SURFACE : PANEL, dp(24), LINE, 1));
     LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
     params.setMargins(0, dp(14), 0, 0);
     panel.setLayoutParams(params);
     return panel;
   }
 
+  private LinearLayout vertical() {
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+    return layout;
+  }
+
   private LinearLayout row() {
     LinearLayout row = new LinearLayout(this);
     row.setOrientation(LinearLayout.HORIZONTAL);
     row.setGravity(Gravity.CENTER_VERTICAL);
-    row.setPadding(0, dp(8), 0, 0);
     return row;
   }
 
   private TextView text(String value, int sp, int color, int style) {
-    TextView text = new TextView(this);
-    text.setText(value);
-    text.setTextColor(color);
-    text.setTextSize(sp);
-    text.setTypeface(Typeface.DEFAULT, style);
-    return text;
+    TextView view = new TextView(this);
+    view.setText(value);
+    view.setTextColor(color);
+    view.setTextSize(sp);
+    view.setTypeface(Typeface.DEFAULT, style);
+    return view;
+  }
+
+  private TextView chip(String value, int color) {
+    TextView chip = text(value, 13, color, Typeface.BOLD);
+    chip.setGravity(Gravity.CENTER);
+    chip.setPadding(dp(12), dp(7), dp(12), dp(7));
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2);
+    params.setMargins(dp(3), 0, dp(3), 0);
+    chip.setLayoutParams(params);
+    chip.setBackground(rounded(0xff151b24, dp(18), color, 1));
+    return chip;
   }
 
   private Button button(String label, boolean primary) {
@@ -728,8 +831,8 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     button.setAllCaps(false);
     button.setTextColor(primary ? DARK : TEXT);
     button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-    button.setBackgroundColor(primary ? GOLD : PANEL_SOFT);
-    button.setMinHeight(dp(48));
+    button.setBackground(rounded(primary ? GOLD : PANEL_STRONG, dp(16), primary ? GOLD : LINE, 1));
+    button.setMinHeight(dp(52));
     return button;
   }
 
@@ -739,7 +842,9 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     box.setTextColor(MUTED);
     box.setTextSize(16);
     box.setChecked(checked);
-    box.setButtonTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+    box.setButtonTintList(ColorStateList.valueOf(ACCENT));
+    box.setBackground(rounded(SURFACE, dp(16), LINE, 1));
+    box.setPadding(dp(12), 0, dp(12), 0);
     return box;
   }
 
@@ -748,31 +853,58 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     input.setText(value);
     input.setSingleLine(true);
     input.setTextColor(TEXT);
-    input.setTextSize(17);
+    input.setTextSize(18);
     input.setGravity(Gravity.CENTER);
+    input.setSelectAllOnFocus(true);
     input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-    input.setBackgroundColor(PANEL_SOFT);
+    input.setBackground(rounded(SURFACE, dp(14), LINE, 1));
     input.setPadding(dp(8), 0, dp(8), 0);
     return input;
   }
 
   private LinearLayout labeledInput(String label, EditText input) {
-    LinearLayout wrap = new LinearLayout(this);
-    wrap.setOrientation(LinearLayout.VERTICAL);
+    LinearLayout wrap = vertical();
     TextView labelView = text(label, 12, MUTED, Typeface.NORMAL);
+    labelView.setPadding(dp(2), 0, 0, dp(5));
     wrap.addView(labelView);
-    wrap.addView(input, new LinearLayout.LayoutParams(-1, dp(46)));
+    wrap.addView(input, new LinearLayout.LayoutParams(-1, dp(48)));
     return wrap;
+  }
+
+  private LinearLayout.LayoutParams matchWrap() {
+    return new LinearLayout.LayoutParams(-1, -2);
   }
 
   private LinearLayout.LayoutParams weightParams() {
     LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
-    params.setMargins(dp(3), 0, dp(3), 0);
+    params.setMargins(dp(4), 0, dp(4), 0);
     return params;
+  }
+
+  private LinearLayout.LayoutParams weightedButton() {
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(54), 1);
+    params.setMargins(dp(4), 0, dp(4), 0);
+    return params;
+  }
+
+  private GradientDrawable rounded(int color, int radius, int strokeColor, int strokeWidth) {
+    GradientDrawable drawable = new GradientDrawable();
+    drawable.setColor(color);
+    drawable.setCornerRadius(radius);
+    if (strokeWidth > 0) {
+      drawable.setStroke(dp(strokeWidth), strokeColor);
+    }
+    return drawable;
   }
 
   private void updateSliderLabel(TextView label, int value, boolean pace) {
     label.setText(pace ? value + "s" : String.valueOf(value));
+  }
+
+  private void setInputText(EditText input, String value) {
+    if (!input.hasFocus() && !input.getText().toString().equals(value)) {
+      input.setText(value);
+    }
   }
 
   private int readInt(EditText input, int fallback) {
@@ -792,6 +924,12 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     int minutes = safeSeconds / 60;
     int seconds = safeSeconds % 60;
     return String.format(Locale.US, "%02d:%02d", minutes, seconds);
+  }
+
+  private String formatDuration(int totalSeconds) {
+    int minutes = totalSeconds / 60;
+    int seconds = totalSeconds % 60;
+    return minutes + ":" + String.format(Locale.US, "%02d", seconds);
   }
 
   private String join(List<String> values, String separator) {
