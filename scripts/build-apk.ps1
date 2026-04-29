@@ -37,7 +37,6 @@ function Invoke-Checked {
 }
 
 $BuildDir = Join-Path $Root "dist\android"
-$AssetsDir = Join-Path $BuildDir "assets\www"
 $GenDir = Join-Path $BuildDir "gen"
 $ClassesDir = Join-Path $BuildDir "classes"
 $DexDir = Join-Path $BuildDir "dex"
@@ -53,13 +52,11 @@ if (Test-Path $Keystore) {
   Copy-Item $Keystore $PreservedKeystore -Force
 }
 Remove-Item -Recurse -Force $BuildDir
-New-Item -ItemType Directory -Force $AssetsDir, $GenDir, $ClassesDir, $DexDir | Out-Null
+New-Item -ItemType Directory -Force $GenDir, $ClassesDir, $DexDir | Out-Null
 if ($PreservedKeystore -and (Test-Path $PreservedKeystore)) {
   New-Item -ItemType Directory -Force (Split-Path -Parent $Keystore) | Out-Null
   Copy-Item $PreservedKeystore $Keystore -Force
 }
-Copy-Item (Join-Path $Root "index.html") $AssetsDir
-Copy-Item -Recurse (Join-Path $Root "src") $AssetsDir
 
 Invoke-Checked -FilePath $Aapt2 -Arguments @(
   "link",
@@ -67,7 +64,6 @@ Invoke-Checked -FilePath $Aapt2 -Arguments @(
   "-I", $PlatformJar,
   "--manifest", (Join-Path $Root "android\AndroidManifest.xml"),
   "--java", $GenDir,
-  "-A", (Join-Path $BuildDir "assets"),
   "--min-sdk-version", "23",
   "--target-sdk-version", "34"
 )

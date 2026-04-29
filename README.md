@@ -1,8 +1,8 @@
 # Corner Call
 
-Corner Call is a simple boxing timer I built for bag work. Pick a round format, hit Start, and the app calls out fresh combinations so you can keep moving without looking at a screen.
+Corner Call is a native Android boxing timer for bag work. Pick a round format, hit Start, and the app calls out fresh combinations so you can keep moving without looking at a screen.
 
-The first version is intentionally small. Everything runs on the device, preferences stay in the browser, and the Android build wraps the same app in a lightweight WebView.
+Everything runs on the phone. The app uses Android views, Android text to speech, Android audio, and local device storage for settings.
 
 ## What It Does
 
@@ -21,25 +21,13 @@ Combos use the standard orthodox punch numbers:
 
 It can also mix in simple defensive calls like duck, slip, and roll.
 
-## Run The Web App
-
-```bash
-npm start
-```
-
-Then open:
-
-```text
-http://127.0.0.1:5173/
-```
-
 ## Build The APK
 
-```bash
-npm run build:apk
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-apk.ps1
 ```
 
-The debug APK lands here:
+The APK lands here:
 
 ```text
 dist/cornercall0.1.apk
@@ -47,4 +35,4 @@ dist/cornercall0.1.apk
 
 ## Notes
 
-This is an MVP, but the basics are there: random combo calls, round and rest timing, voice output, a round bell, local settings, and a packaged Android APK.
+This is version 0.1. It has native controls, random combo calls, round and rest timing, voice output, a round bell, and local settings.
