@@ -1,7 +1,10 @@
 package com.cornercall.app;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
@@ -9,6 +12,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,11 +29,21 @@ import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import com.cornercall.app.shared.HeartRateSummary;
+import com.cornercall.app.shared.SessionState;
+import com.cornercall.app.shared.WearPaths;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.Node;
+import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Wearable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity implements TextToSpeech.OnInitListener {
   private static final String PREFS = "corner_call_settings";
@@ -88,6 +102,8 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   private TextView comboNamesLabel;
   private TextView callCountLabel;
   private TextView recentLabel;
+  private TextView heartRateSummaryLabel;
+  private TextView wearStatusLabel;
   private TextView paceValue;
   private TextView lengthValue;
   private TextView sessionMetaLabel;
@@ -102,6 +118,31 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   private Button aboutTab;
   private LinearLayout contentContainer;
   private final List<String> recentCombos = new ArrayList<>();
+  private HeartRateStore heartRateStore;
+  private HeartRateSummary latestHeartRateSummary;
+  private String sessionId = "";
+  private long sessionStartedAt;
+  private boolean wearBroadcastsRegistered;
+  private final BroadcastReceiver wearReceiver =
+      new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+          if (PhoneWearListenerService.ACTION_WEAR_CONTROL.equals(intent.getAction())) {
+            handleWearControl(intent.getStringExtra(PhoneWearListenerService.EXTRA_PAYLOAD));
+          } else if (PhoneWearListenerService.ACTION_HR_SUMMARY.equals(intent.getAction())) {
+            latestHeartRateSummary =
+                new HeartRateSummary(
+                    sessionId,
+                    intent.getIntExtra(PhoneWearListenerService.EXTRA_SAMPLE_COUNT, 0),
+                    intent.getFloatExtra(PhoneWearListenerService.EXTRA_MIN_BPM, 0),
+                    intent.getFloatExtra(PhoneWearListenerService.EXTRA_AVG_BPM, 0),
+                    intent.getFloatExtra(PhoneWearListenerService.EXTRA_MAX_BPM, 0),
+                    intent.getFloatExtra(PhoneWearListenerService.EXTRA_CALORIES, 0),
+                    intent.getLongExtra(PhoneWearListenerService.EXTRA_SYNCED_AT, 0));
+            render();
+          }
+        }
+      };
 
   private static class Move {
     final String code;
@@ -167,6 +208,8 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
     textToSpeech = new TextToSpeech(this, this);
     toneGenerator = new ToneGenerator(AudioManager.STREAM_MUSIC, 85);
+    heartRateStore = new HeartRateStore(this);
+    latestHeartRateSummary = heartRateStore.latestSummary();
 
     loadSettings();
     phaseRemaining = roundSeconds;
@@ -174,6 +217,18 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     setContentView(buildUi());
     showCombo(false);
     render();
+  }
+
+  @Override
+  protected void onStart() {
+    super.onStart();
+    registerWearBroadcasts();
+  }
+
+  @Override
+  protected void onStop() {
+    unregisterWearBroadcasts();
+    super.onStop();
   }
 
   @Override
@@ -271,6 +326,7 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     contentContainer.removeAllViews();
     contentContainer.addView(workoutCard());
     contentContainer.addView(controlPanel());
+    contentContainer.addView(heartRatePanel());
     contentContainer.addView(formatPanel());
     contentContainer.addView(enginePanel());
     contentContainer.addView(notesPanel());
@@ -367,6 +423,19 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
           }
         });
     return controls;
+  }
+
+  private LinearLayout heartRatePanel() {
+    LinearLayout panel = panel(false);
+    LinearLayout heading = sectionHeading("Heart Rate", "Synced from Wear OS");
+    wearStatusLabel = chip("Watch sync", REST_BLUE);
+    heading.addView(wearStatusLabel);
+    panel.addView(heading);
+    heartRateSummaryLabel = text("", 16, MUTED, Typeface.NORMAL);
+    heartRateSummaryLabel.setLineSpacing(dp(5), 1.0f);
+    heartRateSummaryLabel.setPadding(0, dp(10), 0, 0);
+    panel.addView(heartRateSummaryLabel);
+    return panel;
   }
 
   private LinearLayout formatPanel() {
@@ -596,14 +665,23 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   }
 
   private void toggleWorkout() {
+    toggleWorkout(true);
+  }
+
+  private void toggleWorkout(boolean notifyWear) {
     if (running) {
       stopTimer();
+      if (notifyWear) {
+        sendControlToWatch(WearPaths.ACTION_PAUSE);
+      }
       render();
       return;
     }
     if (complete) {
       resetWorkout();
     }
+    boolean freshSession = sessionId.isEmpty();
+    ensureSession();
     running = true;
     complete = false;
     if (workPhase) {
@@ -611,6 +689,9 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
       nextCallIn = paceSeconds;
     }
     handler.postDelayed(ticker, 1000);
+    if (notifyWear) {
+      sendControlToWatch(freshSession ? WearPaths.ACTION_START : WearPaths.ACTION_RESUME);
+    }
     render();
   }
 
@@ -620,6 +701,9 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
   }
 
   private void resetWorkout() {
+    if (!complete && !sessionId.isEmpty()) {
+      sendControlToWatch(WearPaths.ACTION_END);
+    }
     stopTimer();
     complete = false;
     workPhase = true;
@@ -628,6 +712,8 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     phaseDuration = roundSeconds;
     nextCallIn = 0;
     comboCount = 0;
+    sessionId = "";
+    sessionStartedAt = 0;
     recentCombos.clear();
     showCombo(false);
     render();
@@ -673,6 +759,7 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     stopTimer();
     phaseRemaining = 0;
     speak("Workout complete.");
+    sendControlToWatch(WearPaths.ACTION_END);
   }
 
   private void showCombo(boolean announce) {
@@ -850,6 +937,149 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
       }
       recentLabel.setText(builder.toString());
     }
+    renderHeartRateSummary();
+  }
+
+  private void renderHeartRateSummary() {
+    if (heartRateSummaryLabel == null || wearStatusLabel == null) {
+      return;
+    }
+    if (latestHeartRateSummary == null || !latestHeartRateSummary.hasSamples()) {
+      heartRateSummaryLabel.setText("Pair a Wear OS watch and start a workout to collect heart rate and calories.");
+      wearStatusLabel.setText("No samples");
+      return;
+    }
+    heartRateSummaryLabel.setText(
+        "Avg "
+            + Math.round(latestHeartRateSummary.avgBpm)
+            + " bpm  Max "
+            + Math.round(latestHeartRateSummary.maxBpm)
+            + "  Min "
+            + Math.round(latestHeartRateSummary.minBpm)
+            + "  Cal "
+            + Math.round(latestHeartRateSummary.calories)
+            + "\n"
+            + latestHeartRateSummary.sampleCount
+            + " samples synced "
+            + formatClock(latestHeartRateSummary.lastSyncedAt));
+    wearStatusLabel.setText("Synced");
+  }
+
+  private void handleWearControl(String payload) {
+    if (payload == null || payload.isEmpty()) {
+      return;
+    }
+    try {
+      SessionState state = SessionState.fromJson(new JSONObject(payload));
+      if (WearPaths.ORIGIN_PHONE.equals(state.origin)) {
+        return;
+      }
+      if (!state.sessionId.isEmpty()) {
+        sessionId = state.sessionId;
+        sessionStartedAt = state.startedAt;
+        heartRateStore.ensureSession(sessionId, sessionStartedAt, state.status);
+      }
+      if (WearPaths.ACTION_START.equals(state.action) || WearPaths.ACTION_RESUME.equals(state.action)) {
+        if (!running) {
+          toggleWorkout(false);
+        }
+      } else if (WearPaths.ACTION_PAUSE.equals(state.action)) {
+        if (running) {
+          stopTimer();
+          render();
+        }
+      } else if (WearPaths.ACTION_END.equals(state.action)) {
+        completeFromWear();
+      }
+    } catch (JSONException ignored) {
+    }
+  }
+
+  private void completeFromWear() {
+    stopTimer();
+    complete = true;
+    phaseRemaining = 0;
+    speak("Workout complete.");
+    render();
+  }
+
+  private void ensureSession() {
+    if (!sessionId.isEmpty()) {
+      return;
+    }
+    sessionStartedAt = System.currentTimeMillis();
+    sessionId = "corner-" + sessionStartedAt;
+    heartRateStore.ensureSession(sessionId, sessionStartedAt, WearPaths.STATUS_ACTIVE);
+  }
+
+  private void sendControlToWatch(String action) {
+    ensureSession();
+    final SessionState state =
+        new SessionState(
+            sessionId,
+            WearPaths.ORIGIN_PHONE,
+            action,
+            statusForAction(action),
+            sessionStartedAt,
+            workPhase,
+            currentRound,
+            phaseRemaining);
+    mirrorSessionState(state);
+    Wearable.getNodeClient(this)
+        .getConnectedNodes()
+        .addOnSuccessListener(
+            new com.google.android.gms.tasks.OnSuccessListener<List<Node>>() {
+              @Override
+              public void onSuccess(List<Node> nodes) {
+                for (Node node : nodes) {
+                  Wearable.getMessageClient(MainActivity.this)
+                      .sendMessage(node.getId(), WearPaths.controlPath(action), state.toBytes());
+                }
+              }
+            });
+  }
+
+  private void mirrorSessionState(SessionState state) {
+    PutDataMapRequest request = PutDataMapRequest.create(WearPaths.SESSION_STATE);
+    DataMap map = request.getDataMap();
+    map.putString("payload", state.toJson().toString());
+    map.putLong("updatedAt", System.currentTimeMillis());
+    PutDataRequest dataRequest = request.asPutDataRequest();
+    dataRequest.setUrgent();
+    Wearable.getDataClient(this).putDataItem(dataRequest);
+  }
+
+  private String statusForAction(String action) {
+    if (WearPaths.ACTION_END.equals(action)) {
+      return WearPaths.STATUS_COMPLETE;
+    }
+    if (WearPaths.ACTION_PAUSE.equals(action)) {
+      return WearPaths.STATUS_PAUSED;
+    }
+    return WearPaths.STATUS_ACTIVE;
+  }
+
+  private void registerWearBroadcasts() {
+    if (wearBroadcastsRegistered) {
+      return;
+    }
+    IntentFilter filter = new IntentFilter();
+    filter.addAction(PhoneWearListenerService.ACTION_WEAR_CONTROL);
+    filter.addAction(PhoneWearListenerService.ACTION_HR_SUMMARY);
+    if (Build.VERSION.SDK_INT >= 33) {
+      registerReceiver(wearReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+    } else {
+      registerReceiver(wearReceiver, filter);
+    }
+    wearBroadcastsRegistered = true;
+  }
+
+  private void unregisterWearBroadcasts() {
+    if (!wearBroadcastsRegistered) {
+      return;
+    }
+    unregisterReceiver(wearReceiver);
+    wearBroadcastsRegistered = false;
   }
 
   private void loadSettings() {
@@ -1070,6 +1300,13 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     int minutes = totalSeconds / 60;
     int seconds = totalSeconds % 60;
     return minutes + ":" + String.format(Locale.US, "%02d", seconds);
+  }
+
+  private String formatClock(long timestampMs) {
+    if (timestampMs <= 0) {
+      return "";
+    }
+    return new java.text.SimpleDateFormat("h:mm a", Locale.US).format(new java.util.Date(timestampMs));
   }
 
   private String join(List<String> values, String separator) {

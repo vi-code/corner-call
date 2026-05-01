@@ -1,0 +1,22 @@
+plugins {
+    id "com.android.application" version "8.2.2" apply false
+}
+
+tasks.register("copyDebugApks") {
+    dependsOn ":phone:assembleDebug", ":wear:assembleDebug"
+
+    doLast {
+        def outputDir = layout.projectDirectory.dir("dist").asFile
+        outputDir.mkdirs()
+        copy {
+            from layout.projectDirectory.file("phone/build/outputs/apk/debug/phone-debug.apk")
+            into outputDir
+            rename { "cornercall-phone-debug.apk" }
+        }
+        copy {
+            from layout.projectDirectory.file("wear/build/outputs/apk/debug/wear-debug.apk")
+            into outputDir
+            rename { "cornercall-wear-debug.apk" }
+        }
+    }
+}

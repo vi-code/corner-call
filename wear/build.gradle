@@ -1,0 +1,41 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.cornercall.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.cornercall.app"
+        minSdk 30
+        targetSdk 34
+        versionCode 2
+        versionName "0.2"
+    }
+
+    signingConfigs {
+        debug {
+            storeFile rootProject.file("dist/android/corner-call-debug.keystore")
+            storePassword "android"
+            keyAlias "corner-call-debug"
+            keyPassword "android"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    sourceSets {
+        main.java.srcDir "../shared/src/main/java"
+    }
+}
+
+dependencies {
+    implementation "androidx.health:health-services-client:1.1.0-rc01"
+    implementation "com.google.android.gms:play-services-wearable:19.0.0"
+    implementation "com.google.guava:guava:32.0.1-android"
+}

@@ -5,7 +5,12 @@
   "description": "A dark, app-side boxing combo timer for heavy bag training.",
   "scripts": {
     "start": "python -m http.server 5173 --bind 127.0.0.1",
-    "build:apk": "powershell -ExecutionPolicy Bypass -File scripts/build-apk.ps1"
+    "build:apk": "powershell -ExecutionPolicy Bypass -File scripts/build-apk.ps1",
+    "build:android": "powershell -ExecutionPolicy Bypass -File scripts/build-gradle.ps1",
+    "build:android:clean": "powershell -ExecutionPolicy Bypass -File scripts/build-gradle.ps1 -Clean",
+    "build:android:debug": "powershell -ExecutionPolicy Bypass -File scripts/build-gradle.ps1 -Debug",
+    "build:android:daemon": "powershell -ExecutionPolicy Bypass -File scripts/build-gradle.ps1 -Daemon",
+    "tail:android": "powershell -ExecutionPolicy Bypass -File scripts/tail-gradle-log.ps1"
   },
   "keywords": [
     "boxing",
