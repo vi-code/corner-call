@@ -1,7 +1,15 @@
 node_modules/
+/.gradle/
+/.gradle-local/
+build/
+phone/build/
+wear/build/
 dist/android/
 dist/corner-call-debug.apk
+dist/cornercall-*-debug.apk
+dist/gradle-build.log
 dist/*.idsig
+local.properties
 *.keystore
 .DS_Store
 Thumbs.db
