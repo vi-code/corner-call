@@ -92,6 +92,7 @@ abstract class PhoneStateActivity extends Activity implements TextToSpeech.OnIni
   protected boolean running;
   protected boolean complete;
   protected boolean workPhase = true;
+  protected boolean tenSecondWarningPlayedForPhase;
   protected boolean showingAbout;
   protected int currentRound = 1;
   protected int phaseRemaining;

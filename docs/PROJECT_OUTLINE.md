@@ -12,12 +12,14 @@ Corner Call is a native Android boxing timer with a companion Wear OS app. The p
 |-- wear/                   Wear OS companion app module
 |-- shared/                 Java classes shared by phone and wear modules
 |-- scripts/                Build and log-tail helpers
-|-- dist/                   Generated APK outputs, ignored except legacy tracked artifacts
-|-- docs/                   Project outline and architecture context
+|-- dist/                   Generated APK outputs, ignored local artifacts
+|-- docs/                   Project outline, architecture context, and legacy notes
 |-- build.gradle            Root Gradle build
 |-- settings.gradle         Gradle module list
 |-- gradle.properties       Gradle cache, daemon, and AndroidX settings
 ```
+
+The only active app source lives in `phone/`, `wear/`, and `shared/`. The old root prototype was retired from the active tree and summarized in `docs/LEGACY_PROTOTYPE.md`.
 
 ## Main Modules
 
@@ -26,7 +28,7 @@ Corner Call is a native Android boxing timer with a companion Wear OS app. The p
 The phone module owns the primary workout experience:
 
 - Native Android views for the timer, controls, settings, and summary panels.
-- Text-to-speech combo calling and round bell audio.
+- Text-to-speech combo calling, round bell audio, and the 10-second round clapper.
 - Workout timer state and combo generation.
 - Wear Data Layer command sending and receiving.
 - SQLite storage for workout sessions and raw metric samples.
@@ -85,3 +87,5 @@ dist/gradle-build.log
 ```
 
 These are local build artifacts and should not be committed.
+
+The watch APK is separate from the phone APK for v1. Production distribution should use signed release builds published through CI artifacts, GitHub Releases, or Play/App distribution rather than checked-in binaries.

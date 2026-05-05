@@ -10,6 +10,8 @@ Corner Call is a Gradle Android project with two application modules and a share
 
 Both apps use the same application id, `com.cornercall.app`, so signed phone and watch builds can communicate over the Wear OS Data Layer.
 
+The Gradle modules are the active source of truth. Legacy root prototype files were removed from the active tree and summarized in `docs/LEGACY_PROTOTYPE.md`.
+
 ## Phone Architecture
 
 The phone activity is intentionally split into small superclass layers:
@@ -17,6 +19,7 @@ The phone activity is intentionally split into small superclass layers:
 - `MainActivity`: Android lifecycle and startup/shutdown wiring.
 - `PhoneWearActivity`: Wear command handling, Data Layer sending, and settings persistence.
 - `PhoneWorkoutActivity`: timer, phases, combo selection, speech, bell, and render logic.
+- `PhoneAudioHelper`: named phone workout audio actions for speech, the round bell, and the 10-second clapper.
 - `PhoneLowerPanelsActivity`: lower training panels for combo controls, notes, and punch reference.
 - `PhoneTopLayoutActivity`: header, tabs, timer card, controls, heart-rate panel, format panel, and about panel.
 - `PhoneViewHelpersActivity`: native view factory helpers, layout params, formatting, and utility methods.
@@ -100,7 +103,7 @@ Use `scripts/build-gradle.ps1` for local and Codex builds. It:
 - streams output to `dist/gradle-build.log`
 - copies phone and wear debug APKs into `dist/`
 
-`local.properties`, generated APKs, Gradle caches, and module build folders are intentionally ignored.
+`local.properties`, generated APKs, Gradle caches, and module build folders are intentionally ignored. The Wear OS APK is a separate v1 artifact, copied to `dist/cornercall-wear-debug.apk`; it is not embedded in the phone debug APK.
 
 ## Change Guidelines
 
@@ -109,5 +112,6 @@ Use `scripts/build-gradle.ps1` for local and Codex builds. It:
 - Keep Wear recording active only during active workout time.
 - Sync samples on pause and completion.
 - Do not store generated APKs or logs in Git.
+- Keep `phone/`, `wear/`, and `shared/` as the only active app source roots.
 - Prefer native Android views and Java to match the current codebase.
 - Run the cached Gradle build and phone unit tests after protocol, storage, or Wear sync changes.
