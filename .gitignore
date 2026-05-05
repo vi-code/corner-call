@@ -5,6 +5,8 @@ build/
 phone/build/
 wear/build/
 dist/android/
+dist/*.apk
+dist/*.aab
 dist/corner-call-debug.apk
 dist/cornercall-*-debug.apk
 dist/gradle-build.log

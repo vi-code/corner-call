@@ -4,6 +4,8 @@
 
 ### Changed
 
+* Retired the old pre-Gradle prototype files from the active source tree and documented them in `docs/LEGACY_PROTOTYPE.md`.
+* Clarified that phone and Wear OS APKs are separate generated artifacts that should not be committed to GitHub.
 * Improved spacing and internal padding for control buttons, preset timer buttons, and the custom timer action.
 * Tightened the preset round format grid with dedicated button sizing and gutters.
 * Added repository code ownership so pull requests require approval from vi-code.
@@ -17,6 +19,7 @@
 * Added phone-side SQLite storage for workout sessions, raw heart-rate samples, calories, and synced summaries.
 * Added a compact heart-rate and calorie summary panel to the phone app.
 * Added Gradle build helpers for cached, streamed Android/Wear builds and live build-log tailing.
+* Added a 10-second remaining woodclapper-style warning for active boxing rounds.
 * Added an About tab with author information, a Venmo coffee link, and vi-code.github.io.
 
 ### Fixed

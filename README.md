@@ -4,6 +4,8 @@ Corner Call is a native Android boxing timer for bag work. Pick a round format, 
 
 The phone app is paired with a companion Wear OS app. The phone runs the boxing timer and voice coach, while the watch can control the same session and record heart rate plus calorie totals during active workout time.
 
+The active source of truth is the Gradle project: `phone/`, `wear/`, and `shared/`. Older prototype files were archived out of the active tree; see `docs/LEGACY_PROTOTYPE.md` for context.
+
 ## What It Does
 
 The app can run common boxing sessions like 5 rounds of 3 minutes, 12 rounds of 2 minutes, or 3 rounds of 5 minutes. You can also set your own round count, work time, rest time, call pace, and combo length.
@@ -62,6 +64,8 @@ The APKs land here:
 dist/cornercall-phone-debug.apk
 dist/cornercall-wear-debug.apk
 ```
+
+The Wear OS APK is a separate artifact; it is not bundled inside the phone debug APK in this v1 workflow. Generated APKs should not be committed to GitHub. Keep debug builds local under `dist/`, or distribute builds through CI artifacts, GitHub Releases, or Play/App distribution for release workflows.
 
 For live build progress in another terminal:
 

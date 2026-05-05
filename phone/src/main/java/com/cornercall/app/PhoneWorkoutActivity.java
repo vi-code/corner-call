@@ -89,6 +89,7 @@ abstract class PhoneWorkoutActivity extends PhoneLowerPanelsActivity {
     stopTimer();
     complete = false;
     workPhase = true;
+    tenSecondWarningPlayedForPhase = false;
     currentRound = 1;
     phaseRemaining = roundSeconds;
     phaseDuration = roundSeconds;
@@ -113,6 +114,7 @@ abstract class PhoneWorkoutActivity extends PhoneLowerPanelsActivity {
       }
     }
     phaseRemaining -= 1;
+    maybePlayTenSecondWarning();
     if (phaseRemaining <= 0) {
       advancePhase();
     }
@@ -120,9 +122,10 @@ abstract class PhoneWorkoutActivity extends PhoneLowerPanelsActivity {
   }
 
   protected void advancePhase() {
-    bell();
+    playRoundBell();
     if (workPhase && currentRound < rounds) {
       workPhase = false;
+      tenSecondWarningPlayedForPhase = false;
       phaseRemaining = restSeconds;
       phaseDuration = restSeconds;
       speak("Rest. Breathe and reset.");
@@ -131,6 +134,7 @@ abstract class PhoneWorkoutActivity extends PhoneLowerPanelsActivity {
     if (!workPhase) {
       currentRound += 1;
       workPhase = true;
+      tenSecondWarningPlayedForPhase = false;
       phaseRemaining = roundSeconds;
       phaseDuration = roundSeconds;
       nextCallIn = 0;
@@ -142,6 +146,14 @@ abstract class PhoneWorkoutActivity extends PhoneLowerPanelsActivity {
     phaseRemaining = 0;
     speak("Workout complete.");
     sendControlToWatch(WearPaths.ACTION_END);
+  }
+
+  protected void maybePlayTenSecondWarning() {
+    if (!workPhase || tenSecondWarningPlayedForPhase || phaseRemaining != 10) {
+      return;
+    }
+    tenSecondWarningPlayedForPhase = true;
+    playTenSecondClapper();
   }
 
   protected void showCombo(boolean announce) {
@@ -252,28 +264,15 @@ abstract class PhoneWorkoutActivity extends PhoneLowerPanelsActivity {
   }
 
   protected void speak(String text) {
-    if (!voiceEnabled || !speechReady || textToSpeech == null) {
-      return;
-    }
-    textToSpeech.stop();
-    textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "corner-call");
+    PhoneAudioHelper.speakComboOrStatus(textToSpeech, voiceEnabled, speechReady, text);
   }
 
-  protected void bell() {
-    if (toneGenerator == null) {
-      return;
-    }
-    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 150);
-    handler.postDelayed(
-        new Runnable() {
-          @Override
-          public void run() {
-            if (toneGenerator != null) {
-              toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 150);
-            }
-          }
-        },
-        180);
+  protected void playRoundBell() {
+    PhoneAudioHelper.playRoundBell(toneGenerator, handler);
+  }
+
+  protected void playTenSecondClapper() {
+    PhoneAudioHelper.playTenSecondClapper(toneGenerator, handler);
   }
 
   protected void render() {
