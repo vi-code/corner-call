@@ -1,12 +1,7 @@
 package com.cornercall.app;
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
-import android.os.Build;
 import android.os.IBinder;
 import android.os.SystemClock;
 import androidx.health.services.client.ExerciseClient;
@@ -107,7 +102,7 @@ public final class HeartRateService extends Service {
   @Override
   public void onCreate() {
     super.onCreate();
-    createNotificationChannel();
+    HeartRateNotification.createChannel(this, CHANNEL_ID);
     exerciseClient = HealthServices.getClient(this).getExerciseClient();
   }
 
@@ -232,7 +227,7 @@ public final class HeartRateService extends Service {
           PutDataMapRequest.create(
               WearPaths.HEART_RATE_PREFIX + sessionId + "/" + chunkSeed + "-" + payload.chunkIndex);
       DataMap map = request.getDataMap();
-      writePayload(map, payload);
+      HeartRatePayloadMapper.write(map, payload);
       map.putLong("syncedAt", syncedAt);
       PutDataRequest dataRequest = request.asPutDataRequest();
       dataRequest.setUrgent();
@@ -240,26 +235,6 @@ public final class HeartRateService extends Service {
     }
     chunkSeed += 1;
     syncStatus = snapshot.isEmpty() ? "No new samples" : "Synced " + snapshot.size() + " samples";
-  }
-
-  private void writePayload(DataMap map, HeartRatePayload payload) {
-    long[] timestamps = new long[payload.samples.size()];
-    float[] bpms = new float[payload.samples.size()];
-    float[] calories = new float[payload.samples.size()];
-    for (int i = 0; i < payload.samples.size(); i += 1) {
-      HeartRateSample sample = payload.samples.get(i);
-      timestamps[i] = sample.timestampMs;
-      bpms[i] = sample.bpm;
-      calories[i] = sample.calories;
-    }
-    map.putString("sessionId", payload.sessionId);
-    map.putString("eventType", payload.eventType);
-    map.putInt("chunkIndex", payload.chunkIndex);
-    map.putBoolean("isFinal", payload.isFinal);
-    map.putLongArray("timestamps", timestamps);
-    map.putFloatArray("bpms", bpms);
-    map.putFloatArray("calories", calories);
-    map.putLong("createdAt", System.currentTimeMillis());
   }
 
   private void sendControlToPhone(String action) {
@@ -328,39 +303,6 @@ public final class HeartRateService extends Service {
   }
 
   private void ensureForeground() {
-    startForeground(NOTIFICATION_ID, notification());
-  }
-
-  private Notification notification() {
-    Intent open = new Intent(this, MainActivity.class);
-    PendingIntent pendingIntent =
-        PendingIntent.getActivity(
-            this,
-            0,
-            open,
-            Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
-    Notification.Builder builder =
-        Build.VERSION.SDK_INT >= 26
-            ? new Notification.Builder(this, CHANNEL_ID)
-            : new Notification.Builder(this);
-    return builder
-        .setSmallIcon(R.drawable.ic_launcher)
-        .setContentTitle("Corner Call")
-        .setContentText("Recording heart rate")
-        .setContentIntent(pendingIntent)
-        .setOngoing(true)
-        .build();
-  }
-
-  private void createNotificationChannel() {
-    if (Build.VERSION.SDK_INT < 26) {
-      return;
-    }
-    NotificationChannel channel =
-        new NotificationChannel(CHANNEL_ID, "Heart rate", NotificationManager.IMPORTANCE_LOW);
-    NotificationManager manager = getSystemService(NotificationManager.class);
-    if (manager != null) {
-      manager.createNotificationChannel(channel);
-    }
+    startForeground(NOTIFICATION_ID, HeartRateNotification.create(this, CHANNEL_ID));
   }
 }
